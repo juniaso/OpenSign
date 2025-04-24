@@ -331,7 +331,7 @@ function PdfRequestFiles() {
             const data = { isCertificate: true, isModal: true };
             setIsCompleted(data);
           }
-          console.log("ALL USERS SIGNED")
+          console.log("ALL USERS SIGNED", 'background: #060; color: #fff')
         } else if (declined) {
           const currentDecline = { currnt: "another", isDeclined: true };
           setIsDecline(currentDecline);
@@ -351,7 +351,7 @@ function PdfRequestFiles() {
               message: t("document-signed-alert-1")
             });
           }
-          console.log("WAITING FOR NEXT USER TO SIGN")
+          console.log("WAITING FOR NEXT USER TO SIGN", 'background: #060; color: #fff')
         } else {
           if (currUserId) {
             const checkCurrentUser = documentData[0].Placeholders.find(
@@ -806,8 +806,8 @@ function PdfRequestFiles() {
                   setPdfUrl(resSign.data);
                   setIsSigned(true);
                   let ipRresponse = await axios.get('https://api.ipify.org?format=json');
-                  console.log("Document signed");
-                  console.log(ipRresponse); 
+                  console.log("Document signed", 'background: #060; color: #fff');
+                  console.log(ipRresponse, 'background: #060; color: #fff'); 
                   setSignedSigners([]);
                   setUnSignedSigners([]);
                   const isSuccessRoute = pdfDetails?.[0]?.RedirectUrl
@@ -1264,7 +1264,7 @@ function PdfRequestFiles() {
     setIsAutoSign(false);
 
     let response = await axios.get('https://api.ipify.org?format=json');
-    console.log(response);
+    console.log(response, 'background: #060; color: #fff');
   };
   //function for set decline true on press decline button
   const declineDoc = async (reason) => {
@@ -1390,8 +1390,8 @@ function PdfRequestFiles() {
     }
 
     let response = await axios.get('https://api.ipify.org?format=json');
-    console.log("Closing Tour");
-    console.log(response);
+    console.log("Closing Tour", 'background: #060; color: #fff');
+    console.log(response, 'background: #060; color: #fff');
   };
 
   const formatArrayToString = (arr) => {
