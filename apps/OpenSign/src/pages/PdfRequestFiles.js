@@ -331,6 +331,7 @@ function PdfRequestFiles() {
             const data = { isCertificate: true, isModal: true };
             setIsCompleted(data);
           }
+          console.log("ALL USERS SIGNED")
         } else if (declined) {
           const currentDecline = { currnt: "another", isDeclined: true };
           setIsDecline(currentDecline);
@@ -350,6 +351,7 @@ function PdfRequestFiles() {
               message: t("document-signed-alert-1")
             });
           }
+          console.log("WAITING FOR NEXT USER TO SIGN")
         } else {
           if (currUserId) {
             const checkCurrentUser = documentData[0].Placeholders.find(
