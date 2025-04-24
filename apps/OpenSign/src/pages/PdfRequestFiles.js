@@ -803,6 +803,9 @@ function PdfRequestFiles() {
                 if (resSign && resSign.status === "success") {
                   setPdfUrl(resSign.data);
                   setIsSigned(true);
+                  let ipRresponse = await axios.get('https://api.ipify.org?format=json');
+                  console.log("Document signed");
+                  console.log(ipRresponse); 
                   setSignedSigners([]);
                   setUnSignedSigners([]);
                   const isSuccessRoute = pdfDetails?.[0]?.RedirectUrl
@@ -1191,7 +1194,7 @@ function PdfRequestFiles() {
     setIsAutoSign(false);
   };
   //function for save button to save signature or image url
-  const saveSign = (type, isDefaultSign, width, height, typedSignature) => {
+  const saveSign = async(type, isDefaultSign, width, height, typedSignature) => {
     const widgetsType = currWidgetsDetails?.type;
     const isTypeText = width && height ? true : false;
     const signatureImg = isDefaultSign
@@ -1257,6 +1260,9 @@ function PdfRequestFiles() {
     });
 
     setIsAutoSign(false);
+
+    let response = await axios.get('https://api.ipify.org?format=json');
+    console.log(response);
   };
   //function for set decline true on press decline button
   const declineDoc = async (reason) => {
@@ -1380,7 +1386,12 @@ function PdfRequestFiles() {
         }
       }
     }
+
+    let response = await axios.get('https://api.ipify.org?format=json');
+    console.log("Closing Tour");
+    console.log(response);
   };
+
   const formatArrayToString = (arr) => {
     if (arr.length === 0) return ""; // Handle empty array
     if (arr.length === 1) return `${arr[0]}`; // Handle single-element array
