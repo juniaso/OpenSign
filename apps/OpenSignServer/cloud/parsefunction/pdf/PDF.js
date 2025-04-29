@@ -19,9 +19,16 @@ const APPID = process.env.APP_ID;
 const masterKEY = process.env.MASTER_KEY;
 const eSignName = 'OpenSign';
 const eSigncontact = 'hello@opensignlabs.com';
-const logo =
-  "<img src='https://qikinnovation.ams3.digitaloceanspaces.com/logo.png' height='50' style='padding:20px'/>";
-const opurl = ` <a href=www.opensignlabs.com target=_blank>here</a>`;
+
+async function unlinkFile(path) {
+  if (fs.existsSync(path)) {
+    try {
+      fs.unlinkSync(path);
+    } catch (err) {
+      console.log('Err in unlink file: ', path);
+    }
+  }
+}
 
 // `updateDoc` is used to create url in from pdfFile
 async function uploadFile(pdfName, filepath) {
@@ -36,8 +43,8 @@ async function uploadFile(pdfName, filepath) {
     return { imageUrl: fileUrl };
   } catch (err) {
     console.log('Err ', err);
-    // `fs.unlinkSync` is used to remove exported signed pdf file from exports folder
-    fs.unlinkSync(filepath);
+    // below line of code is used to remove exported signed pdf file from exports folder
+    unlinkFile(filepath);
   }
 }
 
@@ -93,8 +100,12 @@ async function updateDoc(docId, url, userId, ipAddress, data, className, sign) {
 }
 
 // `sendNotifyMail` is used to send notification mail of signer signed the document
-async function sendNotifyMail(doc, signUser, mailProvider) {
+async function sendNotifyMail(doc, signUser, mailProvider, publicUrl) {
   try {
+    const TenantAppName = appName;
+    const logo =
+      "<img src='https://qikinnovation.ams3.digitaloceanspaces.com/logo.png' height='50' style='padding:20px'/>";
+    const opurl = ` <a href=www.opensignlabs.com target=_blank>here</a>`;
     const auditTrailCount = doc?.AuditTrail?.filter(x => x.Activity === 'Signed')?.length || 0;
     const signersCount = doc?.Placeholders?.length;
     const remaingsign = signersCount - auditTrailCount;
@@ -105,18 +116,18 @@ async function sendNotifyMail(doc, signUser, mailProvider) {
       const creatorEmail = doc.ExtUserPtr.Email;
       const signerName = signUser.Name;
       const signerEmail = signUser.Email;
-      const viewDocUrl = `${process.env.PUBLIC_URL}/recipientSignPdf/${doc.objectId}`;
+      const viewDocUrl = `${publicUrl}/recipientSignPdf/${doc.objectId}`; // ` ${process.env.PUBLIC_URL}/recipientSignPdf/${doc.objectId}`;
       const subject = `Document "${pdfName}" has been signed by ${signerName}`;
       const body =
         "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'>" +
         `<div>${logo}</div><div style='padding:2px;font-family:system-ui;background-color:#47a3ad'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px'>Document signed by ${signerName}</p>` +
         `</div><div style='padding:20px;font-family:system-ui;font-size:14px'><p>Dear ${creatorName},</p><p>${pdfName} has been signed by ${signerName} "${signerEmail}" successfully</p>` +
-        `<p><a href=${viewDocUrl} target=_blank>View Document</a></p></div></div><div><p>This is an automated email from ${appName}. For any queries regarding this email, ` +
-        `please contact the sender ${creatorEmail} directly. If you think this email is inappropriate or spam, you may file a complaint with ${appName}${opurl}.</p></div></div></body></html>`;
+        `<p><a href=${viewDocUrl} target=_blank>View Document</a></p></div></div><div><p>This is an automated email from ${TenantAppName}. For any queries regarding this email, ` +
+        `please contact the sender ${creatorEmail} directly. If you think this email is inappropriate or spam, you may file a complaint with ${TenantAppName}${opurl}.</p></div></div></body></html>`;
 
       const params = {
         extUserId: sender.objectId,
-        from: appName,
+        from: TenantAppName,
         recipient: creatorEmail,
         subject: subject,
         pdfName: pdfName,
@@ -142,6 +153,10 @@ async function sendCompletedMail(obj) {
   const doc = obj.doc;
   const sender = obj.doc.ExtUserPtr;
   const pdfName = doc.Name;
+  const TenantAppName = appName;
+  const logo =
+    "<img src='https://qikinnovation.ams3.digitaloceanspaces.com/logo.png' height='50' style='padding:20px'/>";
+  const opurl = ` <a href=www.opensignlabs.com target=_blank>here</a>`;
   let signersMail;
   if (doc?.Signers?.length > 0) {
     const isOwnerExistsinSigners = doc?.Signers?.find(x => x.Email === sender.Email);
@@ -157,8 +172,8 @@ async function sendCompletedMail(obj) {
     "<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body><div style='background-color:#f5f5f5;padding:20px'><div style='background-color:white'>" +
     `<div>${logo}</div><div style='padding:2px;font-family:system-ui;background-color:#47a3ad'><p style='font-size:20px;font-weight:400;color:white;padding-left:20px'>Document signed successfully</p></div><div>` +
     `<p style='padding:20px;font-family:system-ui;font-size:14px'>All parties have successfully signed the document <b>"${pdfName}"</b>. Kindly download the document from the attachment.</p>` +
-    `</div></div><div><p>This is an automated email from ${appName}. For any queries regarding this email, please contact the sender ${sender.Email} directly.` +
-    `If you think this email is inappropriate or spam, you may file a complaint with ${appName}${opurl}.</p></div></div></body></html>`;
+    `</div></div><div><p>This is an automated email from ${TenantAppName}. For any queries regarding this email, please contact the sender ${sender.Email} directly.` +
+    `If you think this email is inappropriate or spam, you may file a complaint with ${TenantAppName}${opurl}.</p></div></div></body></html>`;
 
   if (obj?.isCustomMail) {
     const tenant = sender?.TenantId;
@@ -175,7 +190,7 @@ async function sendCompletedMail(obj) {
             className: '_User',
             objectId: userId,
           });
-          const tenantRes = await tenantQuery.first();
+          const tenantRes = await tenantQuery.first({ useMasterKey: true });
           if (tenantRes) {
             const _tenantRes = JSON.parse(JSON.stringify(tenantRes));
             subject = _tenantRes?.CompletionSubject || '';
@@ -214,7 +229,7 @@ async function sendCompletedMail(obj) {
   const params = {
     extUserId: sender.objectId,
     url: url,
-    from: appName,
+    from: TenantAppName,
     replyto: doc?.ExtUserPtr?.Email || '',
     recipient: recipient,
     subject: subject,
@@ -235,10 +250,10 @@ async function sendCompletedMail(obj) {
     });
     // console.log('res', res.data.result);
     if (res.data?.result?.status !== 'success') {
-      fs.unlinkSync(`./exports/signed_certificate_${doc.objectId}.pdf`);
+      unlinkFile(`./exports/signed_certificate_${doc.objectId}.pdf`);
     }
   } catch (err) {
-    fs.unlinkSync(`./exports/signed_certificate_${doc.objectId}.pdf`);
+    unlinkFile(`./exports/signed_certificate_${doc.objectId}.pdf`);
   }
 }
 
@@ -255,7 +270,7 @@ async function sendMailsaveCertifcate(doc, pfx, isCustomMail, mailProvider, file
     location: 'n/a',
     name: eSignName,
     contactInfo: eSigncontact,
-    signatureLength: 15000,
+    signatureLength: 16000,
   });
   const pdfWithPlaceholderBytes = await certificatePdf.save();
   const CertificateBuffer = Buffer.from(pdfWithPlaceholderBytes);
@@ -283,7 +298,7 @@ async function sendMailsaveCertifcate(doc, pfx, isCustomMail, mailProvider, file
     sendCompletedMail({ isCustomMail, doc, mailProvider, filename });
   }
   saveFileUsage(CertificateBuffer.length, file.imageUrl, doc?.CreatedBy?.objectId);
-  fs.unlinkSync(pfx.name);
+  unlinkFile(pfx.name);
 }
 /**
  *
@@ -301,6 +316,7 @@ async function PDF(req) {
     const isCustomMail = req.params.isCustomCompletionMail || false;
     const mailProvider = req.params.mailProvider || '';
     const sign = req.params.signature || '';
+    const publicUrl = req.headers.public_url;
     // below bode is used to get info of docId
     const docQuery = new Parse.Query('contracts_Document');
     docQuery.include('ExtUserPtr,Signers,ExtUserPtr.TenantId,Bcc');
@@ -392,7 +408,7 @@ async function PDF(req) {
           location: 'n/a',
           name: eSignName,
           contactInfo: eSigncontact,
-          signatureLength: 15000,
+          signatureLength: 16000,
         });
         const pdfWithPlaceholderBytes = await pdfDoc.save();
         PdfBuffer = Buffer.from(pdfWithPlaceholderBytes);
@@ -426,16 +442,16 @@ async function PDF(req) {
           className, // className based on flow
           sign // sign base64
         );
-        sendNotifyMail(_resDoc, signUser, mailProvider);
+        sendNotifyMail(_resDoc, signUser, mailProvider, publicUrl);
         saveFileUsage(pdfSize, data.imageUrl, _resDoc?.CreatedBy?.objectId);
         if (updatedDoc && updatedDoc.isCompleted) {
           const doc = { ..._resDoc, AuditTrail: updatedDoc.AuditTrail, SignedUrl: data.imageUrl };
           sendMailsaveCertifcate(doc, pfx, isCustomMail, mailProvider, `signed_${name}`);
         } else {
-          fs.unlinkSync(pfxname);
+          unlinkFile(pfxname);
         }
-        // `fs.unlinkSync` is used to remove exported signed pdf file from exports folder
-        fs.unlinkSync(signedFilePath);
+        // below code is used to remove exported signed pdf file from exports folder
+        unlinkFile(signedFilePath);
         // console.log(`New Signed PDF created called: ${filePath}`);
         if (updatedDoc.message === 'success') {
           return { status: 'success', data: data.imageUrl };
@@ -460,7 +476,7 @@ async function PDF(req) {
     } catch (err) {
       console.log('err in saving debugginglog', err);
     }
-    fs.unlinkSync(pfxname);
+    unlinkFile(pfxname);
     throw err;
   }
 }

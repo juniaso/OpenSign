@@ -160,6 +160,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(function (req, res, next) {
   req.headers['x-real-ip'] = getUserIP(req);
+  const publicUrl = 'https://' + req?.get('host');
+  req.headers['public_url'] = publicUrl; // process.env.PUBLIC_URL
   next();
 });
 function getUserIP(request) {
@@ -229,6 +231,7 @@ if (!process.env.TESTING) {
     console.log('opensign-server running on port ' + port + '.');
     const isWindows = process.platform === 'win32';
     // console.log('isWindows', isWindows);
+    createContactIndex();
 
     const migrate = isWindows
       ? `set APPLICATION_ID=${process.env.APP_ID}&& set SERVER_URL=${cloudServerUrl}&& set MASTER_KEY=${process.env.MASTER_KEY}&& npx parse-dbtool migrate`
@@ -243,7 +246,6 @@ if (!process.env.TESTING) {
         console.error(`Error: ${stderr}`);
         return;
       }
-      createContactIndex();
       console.log(`Command output: ${stdout}`);
     });
   });

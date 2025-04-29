@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import axios from "axios";
-import {
-  emailRegex,
-} from "../constant/const";
-import {
-  contractUsers,
-  saveLanguageInLocal
-} from "../constant/Utils";
+import { emailRegex } from "../constant/const";
+import { contractUsers, saveLanguageInLocal } from "../constant/Utils";
 import logo from "../assets/images/logo.png";
 import { appInfo } from "../constant/appinfo";
 import Parse from "parse";
@@ -15,12 +10,16 @@ import { useTranslation } from "react-i18next";
 import SelectLanguage from "../components/pdf/SelectLanguage";
 import LoaderWithMsg from "../primitives/LoaderWithMsg";
 import Title from "../components/Title";
+import ModalUi from "../primitives/ModalUi";
+import Loader from "../primitives/Loader";
 
 function GuestLogin() {
   const { t, i18n } = useTranslation();
   const { id, userMail, contactBookId, base64url } = useParams();
   const navigate = useNavigate();
-  const [email, setEmail] = useState(userMail);
+  const [email, setEmail] = useState(
+    userMail?.toLowerCase()?.replace(/\s/g, "")
+  );
   const [OTP, setOTP] = useState("");
   const [EnterOTP, setEnterOtp] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,6 +32,7 @@ function GuestLogin() {
   const [contactId, setContactId] = useState(contactBookId);
   const [sendmail, setSendmail] = useState();
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
+
   const navigateToDoc = async (docId, contactId) => {
     try {
       const docDetails = await Parse.Cloud.run("getDocument", {
@@ -56,6 +56,7 @@ function GuestLogin() {
       return false;
     }
   };
+
   useEffect(() => {
     handleServerUrl();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,13 +64,10 @@ function GuestLogin() {
 
   //function generate serverUrl and parseAppId from url and save it in local storage
   const handleServerUrl = async () => {
-      setAppLogo(logo);
+    setAppLogo(logo);
 
     localStorage.clear(); // Clears everything
-    localStorage.setItem(
-      "appname",
-        "OpenSign™"
-    );
+    localStorage.setItem("appname", "OpenSign™");
     //save isGuestSigner true in local to handle login flow header in mobile view
     localStorage.setItem("isGuestSigner", true);
     saveLanguageInLocal(i18n);
@@ -84,12 +82,18 @@ function GuestLogin() {
       //split url in array from '/'
       const checkSplit = decodebase64.split("/");
       setDocumentId(checkSplit[0]);
-      setContact((prev) => ({ ...prev, email: checkSplit[1] }));
-      setEmail(checkSplit[1]);
+      setContact((prev) => ({
+        ...prev,
+        email: checkSplit[1]?.toLowerCase()?.replace(/\s/g, "")
+      }));
+      setEmail(checkSplit[1]?.toLowerCase()?.replace(/\s/g, ""));
       const contactId = checkSplit?.[2];
       setSendmail(checkSplit[3]);
       if (!contactId) {
-        const params = { email: checkSplit[1], docId: checkSplit[0] };
+        const params = {
+          email: checkSplit[1]?.toLowerCase()?.replace(/\s/g, ""),
+          docId: checkSplit[0]
+        };
         try {
           const linkContactRes = await Parse.Cloud.run(
             "linkcontacttodoc",
@@ -111,9 +115,12 @@ function GuestLogin() {
   //send email OTP function
   const SendOtp = async () => {
     setLoading(true);
-    setEmail(email);
+    setEmail(email?.toLowerCase()?.replace(/\s/g, ""));
     try {
-      const params = { email: email.toString(), docId: documentId };
+      const params = {
+        email: email?.toLowerCase()?.replace(/\s/g, "")?.toString(),
+        docId: documentId
+      };
       const Otp = await Parse.Cloud.run("SendOTPMailV1", params);
       if (Otp) {
         setLoading(false);
@@ -121,6 +128,7 @@ function GuestLogin() {
       }
     } catch (error) {
       alert(t("something-went-wrong-mssg"));
+      setLoading(false);
     }
   };
 
@@ -144,7 +152,10 @@ function GuestLogin() {
           "Content-Type": "application/json",
           "X-Parse-Application-Id": parseId
         };
-        let body = { email: email, otp: OTP };
+        let body = {
+          email: email?.toLowerCase()?.replace(/\s/g, ""),
+          otp: OTP
+        };
         let user = await axios.post(url, body, { headers: headers });
         if (user.data.result === "Invalid Otp") {
           alert(t("invalid-otp"));
@@ -182,14 +193,16 @@ function GuestLogin() {
         }
       } catch (error) {
         console.log("err ", error);
+        setLoading(false);
       }
     } else {
       alert(t("enter-otp-alert"));
     }
   };
+
   const handleUserData = async (e) => {
     e.preventDefault();
-    if (!emailRegex.test(contact.email)) {
+    if (!emailRegex.test(contact.email?.toLowerCase()?.replace(/\s/g, ""))) {
       alert("Please enter a valid email address.");
     } else {
       const params = { ...contact, docId: documentId };
@@ -215,12 +228,67 @@ function GuestLogin() {
       }
     }
   };
+
   const handleInputChange = (e) => {
-    setContact((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (e.target.name === "email") {
+      setContact((prev) => ({
+        ...prev,
+        [e.target.name]: e.target.value?.toLowerCase()?.replace(/\s/g, "")
+      }));
+    } else {
+      setContact((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    }
   };
+
   return (
     <div>
       <Title title="Request Sign" />
+
+      {/* OTP Verification Modal */}
+      {EnterOTP && (
+        <ModalUi
+          isOpen
+          title={t("otp-verification")}
+          handleClose={() => setEnterOtp(false)}
+        >
+          {loading ? (
+            <div className="h-[150px] flex justify-center items-center">
+              <Loader />
+            </div>
+          ) : (
+            <form onSubmit={(e) => VerifyOTP(e)}>
+              <div className="px-6 py-3 text-base-content">
+                <label className="mb-2">{t("enter-otp")}</label>
+                <input
+                  onInvalid={(e) =>
+                    e.target.setCustomValidity(t("input-required"))
+                  }
+                  onInput={(e) => e.target.setCustomValidity("")}
+                  required
+                  type="tel"
+                  pattern="[0-9]{4}"
+                  className="w-full op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content text-xs"
+                  placeholder={t("otp-placeholder")}
+                  value={OTP}
+                  onChange={(e) => setOTP(e.target.value)}
+                />
+              </div>
+              <div className="px-6 mb-3">
+                <button type="submit" className="op-btn op-btn-primary">
+                  {t("verify")}
+                </button>
+                <button
+                  className="op-btn op-btn-secondary ml-2"
+                  onClick={(e) => handleSendOTPBtn(e)}
+                >
+                  {t("resend")}
+                </button>
+              </div>
+            </form>
+          )}
+        </ModalUi>
+      )}
+
       {isLoading.isLoad ? (
         <LoaderWithMsg isLoading={isLoading} />
       ) : (
@@ -236,63 +304,34 @@ function GuestLogin() {
               )}
             </div>
             {contactId ? (
-              <>
-                {!EnterOTP ? (
-                  <div className="w-full md:w-[50%] text-base-content">
-                    <h1 className="text-2xl md:text-[30px]">{t("welcome")}</h1>
-                    <legend className="text-[12px] text-[#878787] mt-2 mb-1">
-                      {t("get-otp-alert")}
-                    </legend>
-                    <div className="p-[20px] outline outline-1 outline-slate-300/50 my-2 op-card shadow-md">
-                      <input
-                        type="email"
-                        name="email"
-                        value={email}
-                        className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full disabled:text-[#5c5c5c] text-xs"
-                        disabled
-                      />
-                    </div>
-                    <div className="mt-3">
-                      <button
-                        className="op-btn op-btn-primary"
-                        onClick={(e) => handleSendOTPBtn(e)}
-                        disabled={loading}
-                      >
-                        {loading ? t("loading") : t("get-verification-code")}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <form
-                    className="w-full md:w-[50%] text-base-content"
-                    onSubmit={VerifyOTP}
+              <div className="w-full md:w-[50%] text-base-content">
+                <h1 className="text-2xl md:text-[30px]">{t("welcome")}</h1>
+                <legend className="text-[12px] text-[#878787] mt-2 mb-1">
+                  {t("get-otp-alert")}
+                </legend>
+                <div className="p-[20px] outline outline-1 outline-slate-300/50 my-2 op-card shadow-md">
+                  <input
+                    type="email"
+                    name="email"
+                    value={email}
+                    className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full disabled:text-[#5c5c5c] text-xs"
+                    disabled
+                  />
+                </div>
+                <div className="mt-3">
+                  <button
+                    className="op-btn op-btn-primary flex items-center"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      SendOtp();
+                    }}
+                    disabled={loading}
                   >
-                    <h1 className="text-2xl md:text-[30px]">{t("welcome")}</h1>
-                    <legend className="text-[12px] text-[#878787] mt-2">
-                      {t("guest-email-alert")}
-                    </legend>
-                    <div className="p-[20px] pt-[15px] outline outline-1 outline-slate-300/50 op-card my-2 shadow-md">
-                      <p className="text-sm">{t("enter-verification-code")}</p>
-                      <input
-                        type="number"
-                        className="mt-2 op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
-                        name="OTP"
-                        value={OTP}
-                        onChange={(e) => setOTP(e.target.value)}
-                      />
-                    </div>
-                    <div className="mt-2.5">
-                      <button
-                        className="op-btn op-btn-primary"
-                        type="submit"
-                        disabled={loading}
-                      >
-                        {loading ? t("loading") : t("verify")}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </>
+                    <i className="fa-light fa-message-sms mr-2"></i>
+                    {loading ? t("loading") : t("get-verification-code")}
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="w-full md:w-[50%] text-base-content">
                 <h1 className="text-2xl md:text-[30px]">{t("welcome")}</h1>

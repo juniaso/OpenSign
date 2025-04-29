@@ -643,6 +643,15 @@ export const createDocument = async (
     const RedirectUrl = Doc?.RedirectUrl
       ? { RedirectUrl: Doc?.RedirectUrl }
       : {};
+    const TemplateId = Doc?.objectId
+      ? {
+          TemplateId: {
+            __type: "Pointer",
+            className: "contracts_Template",
+            objectId: Doc?.objectId
+          }
+        }
+      : {};
     const data = {
       Name: Doc.Name,
       URL: pdfUrl,
@@ -672,7 +681,8 @@ export const createDocument = async (
       ...SignatureType,
       ...NotifyOnSignatures,
       ...Bcc,
-      ...RedirectUrl
+      ...RedirectUrl,
+      ...TemplateId
     };
     const remindOnceInEvery = Doc?.RemindOnceInEvery;
     const TimeToCompleteDays = parseInt(Doc?.TimeToCompleteDays);
@@ -2182,7 +2192,9 @@ export const handleSendOTP = async (email) => {
       "Content-Type": "application/json",
       "X-Parse-Application-Id": localStorage.getItem("parseAppId")
     };
-    const body = { email: email };
+    const body = {
+      email: email
+    };
     await axios.post(url, body, { headers: headers });
   } catch (error) {
     alert(error.message);
@@ -2960,8 +2972,10 @@ export const mailTemplate = (param) => {
     param.senderMail +
     "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Organization</td><td></td><td style='color:#626363;font-weight:bold'> " +
     param.organization +
-    "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Expire on</td><td></td><td style='color:#626363;font-weight:bold'>" +
+    "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Expires on</td><td></td><td style='color:#626363;font-weight:bold'>" +
     param.localExpireDate +
+    "</td></tr><tr><td style='font-weight:bold;font-family:sans-serif;font-size:15px'>Note</td><td></td><td style='color:#626363;font-weight:bold'>" +
+    param.note +
     "</td></tr><tr><td></td><td></td></tr></table></div> <div style='margin-left:70px'><a target=_blank href=" +
     param.sigingUrl +
     "><button style='padding:12px;background-color:#d46b0f;color:white;border:0px;font-weight:bold;margin-top:30px'>Sign here</button></a></div><div style='display:flex;justify-content:center;margin-top:10px'></div></div></div><div><p> This is an automated email from " +

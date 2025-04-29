@@ -284,14 +284,14 @@ const TemplatePlaceholder = () => {
             const updatedSigners = documentData[0].Signers.map((x, index) => ({
               ...x,
               Id: randomId(),
-              Role: "User " + (index + 1)
+              Role: "Role " + (index + 1)
             }));
             setSignersData(updatedSigners);
             setUniqueId(updatedSigners[0].Id);
             setBlockColor(updatedSigners[0].blockColor);
           }
         } else {
-          setRoleName("User 1");
+          setRoleName("Role 1");
           if (
             documentData[0].Placeholders &&
             documentData[0].Placeholders.length > 0
@@ -733,20 +733,18 @@ const TemplatePlaceholder = () => {
     let isLabel = false;
     let unfilledTextWidgetId = "";
     //condition is used to check text widget data is empty or have response
-    if (getPrefill) {
-      if (prefillPlaceholder) {
-        prefillPlaceholder.map((data) => {
-          if (!isLabel) {
-            const unfilledTextWidgets = data.pos.find(
-              (position) => !position.options.response
-            );
-            if (unfilledTextWidgets) {
-              isLabel = true;
-              unfilledTextWidgetId = unfilledTextWidgets.key;
-            }
+    if (getPrefill && prefillPlaceholder) {
+      prefillPlaceholder.map((data) => {
+        if (!isLabel) {
+          const unfilledTextWidgets = data.pos.find(
+            (position) => !position.options.response
+          );
+          if (unfilledTextWidgets) {
+            isLabel = true;
+            unfilledTextWidgetId = unfilledTextWidgets.key;
           }
-        });
-      }
+        }
+      });
     }
     if (getPrefill && isLabel) {
       setUnSignedWidgetId(unfilledTextWidgetId);
@@ -1101,7 +1099,7 @@ const TemplatePlaceholder = () => {
     const Id = randomId();
     const index = signersdata.length;
     const obj = {
-      Role: roleName || "User " + count,
+      Role: roleName || "Role " + count,
       Id: Id,
       blockColor: color[index]
     };
@@ -1110,7 +1108,7 @@ const TemplatePlaceholder = () => {
       signerPtr: {},
       signerObjId: "",
       blockColor: color[index],
-      Role: roleName || "User " + count,
+      Role: roleName || "Role " + count,
       Id: Id
     };
 
@@ -1250,6 +1248,7 @@ const TemplatePlaceholder = () => {
         ? { RedirectUrl: updateTemplate?.[0]?.RedirectUrl }
         : {};
       const data = {
+        ...(updateTemplate?.[0]?.URL ? { URL: updateTemplate?.[0]?.URL } : {}),
         Name: updateTemplate?.[0]?.Name || "",
         Note: updateTemplate?.[0]?.Note || "",
         Description: updateTemplate?.[0]?.Description || "",
@@ -1964,16 +1963,17 @@ const TemplatePlaceholder = () => {
             />
           )}
         </div>
-        <ModalUi
-          title={t("edit-template")}
-          isOpen={isEditTemplate}
-          handleClose={handleEditTemplateModal}
-        >
+        {isEditTemplate && (
           <EditTemplate
+            title={t("edit-template")}
+            handleClose={handleEditTemplateModal}
+            pdfbase64={pdfBase64Url}
             template={pdfDetails?.[0]}
             onSuccess={handleEditTemplateForm}
+            setPdfArrayBuffer={setPdfArrayBuffer}
+            setPdfBase64Url={setPdfBase64Url}
           />
-        </ModalUi>
+        )}
         <WidgetNameModal
           signatureType={signatureType}
           widgetName={widgetName}

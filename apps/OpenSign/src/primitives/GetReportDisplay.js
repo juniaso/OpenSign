@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import pad from "../assets/images/pad.svg";
-import { useLocation, useNavigate } from "react-router";
+import recreatedoc from "../assets/images/recreatedoc.png";
+import { Link, useLocation, useNavigate } from "react-router";
 import axios from "axios";
 import ModalUi from "./ModalUi";
 import AddSigner from "../components/AddSigner";
@@ -19,7 +20,8 @@ import {
   getTenantDetails,
   handleSignatureType,
   replaceMailVaribles,
-  signatureTypes
+  signatureTypes,
+  openInNewTab
 } from "../constant/Utils";
 import EditorToolbar, {
   module1,
@@ -46,7 +48,6 @@ const ReportTable = (props) => {
     location?.pathname === "/dashboard/35KBoSgoAK" ? true : false;
   const [currentPage, setCurrentPage] = useState(1);
   const [actLoader, setActLoader] = useState({});
-  const [isAlert, setIsAlert] = useState(false);
   const [isContactform, setIsContactform] = useState(false);
   const [isDeleteModal, setIsDeleteModal] = useState({});
   const [isRevoke, setIsRevoke] = useState({});
@@ -81,6 +82,9 @@ const ReportTable = (props) => {
   const [invalidRecords, setInvalidRecords] = useState(0);
   const [renameDoc, setRenameDoc] = useState("");
   const [contact, setContact] = useState({ Name: "", Email: "", Phone: "" });
+  const [isSuccess, setIsSuccess] = useState({});
+  const [templateId, setTemplateId] = useState("");
+  const isTemplateReport = props.ReportName === "Templates";
   const recordsPerPage = 5;
   const startIndex = (currentPage - 1) * props.docPerPage;
   const { isMoreDocs, setIsNextRecord } = props;
@@ -136,6 +140,10 @@ const ReportTable = (props) => {
 
     return pages;
   };
+  const showAlert = (type, message, time = 1500) => {
+    setAlertMsg({ type: type, message: message });
+    setTimeout(() => setAlertMsg({ type: "", message: "" }), time);
+  };
   const pageNumbers = getPaginationRange();
   //  below useEffect reset currenpage to 1 if user change route
   useEffect(() => {
@@ -147,7 +155,7 @@ const ReportTable = (props) => {
 
   // `fetchTeamList` is used to fetch team list for share with functionality
   const fetchTeamList = async () => {
-    if (props.ReportName === "Templates") {
+    if (isTemplateReport) {
       try {
         const extUser = JSON.parse(localStorage.getItem("Extand_Class"))?.[0];
         if (extUser?.OrganizationId?.objectId) {
@@ -220,169 +228,158 @@ const ReportTable = (props) => {
 
   // `handleURL` is used to open microapp
   const handleURL = async (item, act) => {
-    if (props.ReportName === "Templates") {
+    if (isTemplateReport) {
       if (act.hoverLabel === "Edit") {
         navigate(`/${act.redirectUrl}/${item.objectId}`);
       } else {
         setActLoader({ [`${item.objectId}_${act.btnId}`]: true });
-        try {
-          const params = { templateId: item.objectId };
-          const templateDeatils = await axios.post(
-            `${localStorage.getItem("baseUrl")}functions/getTemplate`,
-            params,
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-                sessionToken: localStorage.getItem("accesstoken")
-              }
-            }
-          );
-          const templateData =
-            templateDeatils.data && templateDeatils.data.result;
-          if (!templateData.error) {
-            const Doc = templateData;
-
-            let signers = [];
-            if (Doc.Signers?.length > 0) {
-              Doc.Signers?.forEach((x) => {
-                if (x.objectId) {
-                  const obj = {
-                    __type: "Pointer",
-                    className: "contracts_Contactbook",
-                    objectId: x.objectId
-                  };
-                  signers.push(obj);
-                }
-              });
-            }
-
-            let extUserId = Doc.ExtUserPtr.objectId;
-            let creatorId = Doc.CreatedBy.objectId;
-            if (extClass && extClass.length > 0) {
-              if (Doc.ExtUserPtr?.objectId !== extClass[0].objectId) {
-                const Extand_Class = localStorage.getItem("Extand_Class");
-                const extClass = Extand_Class && JSON.parse(Extand_Class);
-                if (extClass && extClass.length > 0) {
-                  extUserId = extClass[0].objectId;
-                  creatorId = extClass[0]?.UserId.objectId;
-                }
-              }
-            }
-            const tenantSignTypes = await fetchTenantDetails();
-            const docSignTypes = Doc?.SignatureType || signatureTypes;
-            const updatedSignatureType = await handleSignatureType(
-              tenantSignTypes,
-              docSignTypes
-            );
-            const SignatureType =
-              updatedSignatureType.length > 0
-                ? { SignatureType: updatedSignatureType }
-                : {};
-            const NotifyOnSignatures =
-              Doc?.NotifyOnSignatures !== undefined
-                ? { NotifyOnSignatures: Doc.NotifyOnSignatures }
-                : {};
-            const Bcc = Doc?.Bcc?.length > 0 ? { Bcc: Doc?.Bcc } : {};
-            const RedirectUrl = Doc?.RedirectUrl
-              ? { RedirectUrl: Doc?.RedirectUrl }
-              : {};
-            let placeholdersArr = [];
-            if (Doc.Placeholders?.length > 0) {
-              placeholdersArr = Doc.Placeholders;
-              const data = {
-                Name: Doc.Name,
-                URL: Doc.URL,
-                SignedUrl: Doc.SignedUrl,
-                SentToOthers: Doc?.SentToOthers || false,
-                Description: Doc.Description,
-                Note: Doc.Note,
-                Placeholders: placeholdersArr,
-                ExtUserPtr: {
-                  __type: "Pointer",
-                  className: "contracts_Users",
-                  objectId: extUserId
-                },
-                CreatedBy: {
-                  __type: "Pointer",
-                  className: "_User",
-                  objectId: creatorId
-                },
-                Signers: signers,
-                SendinOrder: Doc?.SendinOrder || false,
-                AutomaticReminders: Doc?.AutomaticReminders || false,
-                RemindOnceInEvery: Doc?.RemindOnceInEvery || 5,
-                IsEnableOTP: Doc?.IsEnableOTP || false,
-                TimeToCompleteDays: parseInt(Doc?.TimeToCompleteDays) || 15,
-                AllowModifications: Doc?.AllowModifications || false,
-                ...SignatureType,
-                ...NotifyOnSignatures,
-                ...Bcc,
-                ...RedirectUrl
-              };
-              try {
-                const res = await axios.post(
-                  `${localStorage.getItem(
-                    "baseUrl"
-                  )}classes/contracts_Document`,
-                  data,
-                  {
-                    headers: {
-                      "Content-Type": "application/json",
-                      "X-Parse-Application-Id":
-                        localStorage.getItem("parseAppId"),
-                      "X-Parse-Session-Token":
-                        localStorage.getItem("accesstoken")
-                    }
-                  }
-                );
-
-                if (res.data && res.data.objectId) {
-                  setActLoader({});
-                  setIsAlert(true);
-                  setTimeout(() => setIsAlert(false), 1500);
-                  navigate(`/${act.redirectUrl}/${res.data.objectId}`, {
-                    state: { title: "Use Template" }
-                  });
-                }
-              } catch (err) {
-                console.log("Err", err);
-                setIsAlert(true);
-                setAlertMsg({
-                  type: "danger",
-                  message: t("something-went-wrong-mssg")
-                });
-                setTimeout(() => setIsAlert(false), 1500);
-                setActLoader({});
-              }
-            } else {
-              setActLoader({});
-            }
-          } else {
-            setIsAlert(true);
-            setAlertMsg({
-              type: "danger",
-              message: t("something-went-wrong-mssg")
-            });
-            setTimeout(() => setIsAlert(false), 1500);
-            setActLoader({});
-          }
-        } catch (err) {
-          console.log("err", err);
-          setIsAlert(true);
-          setAlertMsg({
-            type: "danger",
-            message: t("something-went-wrong-mssg")
-          });
-          setTimeout(() => setIsAlert(false), 1500);
-          setActLoader({});
-        }
+        handleUseTemplate(item.objectId, act.redirectUrl);
       }
     } else {
       navigate(`/${act.redirectUrl}?docId=${item?.objectId}`);
     }
   };
 
+  const handleUseTemplate = async (templateId, redirectUrl) => {
+    try {
+      const params = { templateId: templateId };
+      const templateDeatils = await axios.post(
+        `${localStorage.getItem("baseUrl")}functions/getTemplate`,
+        params,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+            sessionToken: localStorage.getItem("accesstoken")
+          }
+        }
+      );
+      const templateData = templateDeatils.data && templateDeatils.data.result;
+      if (!templateData.error) {
+        const Doc = templateData;
+
+        let signers = [];
+        if (Doc.Signers?.length > 0) {
+          Doc.Signers?.forEach((x) => {
+            if (x.objectId) {
+              signers.push({
+                __type: "Pointer",
+                className: "contracts_Contactbook",
+                objectId: x.objectId
+              });
+            }
+          });
+        }
+
+        let extUserId = Doc.ExtUserPtr.objectId;
+        let creatorId = Doc.CreatedBy.objectId;
+        if (extClass && extClass.length > 0) {
+          if (Doc.ExtUserPtr?.objectId !== extClass[0].objectId) {
+            const Extand_Class = localStorage.getItem("Extand_Class");
+            const extClass = Extand_Class && JSON.parse(Extand_Class);
+            if (extClass && extClass.length > 0) {
+              extUserId = extClass[0].objectId;
+              creatorId = extClass[0]?.UserId.objectId;
+            }
+          }
+        }
+        const tenantSignTypes = await fetchTenantDetails();
+        const docSignTypes = Doc?.SignatureType || signatureTypes;
+        const updatedSignatureType = await handleSignatureType(
+          tenantSignTypes,
+          docSignTypes
+        );
+        const SignatureType =
+          updatedSignatureType.length > 0
+            ? { SignatureType: updatedSignatureType }
+            : {};
+        const NotifyOnSignatures =
+          Doc?.NotifyOnSignatures !== undefined
+            ? { NotifyOnSignatures: Doc.NotifyOnSignatures }
+            : {};
+        const Bcc = Doc?.Bcc?.length > 0 ? { Bcc: Doc?.Bcc } : {};
+        const RedirectUrl = Doc?.RedirectUrl
+          ? { RedirectUrl: Doc?.RedirectUrl }
+          : {};
+        const TemplateId = Doc?.objectId
+          ? {
+              TemplateId: {
+                __type: "Pointer",
+                className: "contracts_Template",
+                objectId: Doc?.objectId
+              }
+            }
+          : {};
+        let placeholdersArr = [];
+        if (Doc.Placeholders?.length > 0) {
+          placeholdersArr = Doc.Placeholders;
+          const data = {
+            Name: Doc.Name,
+            URL: Doc.URL,
+            SignedUrl: Doc.SignedUrl,
+            SentToOthers: Doc?.SentToOthers || false,
+            Description: Doc.Description,
+            Note: Doc.Note,
+            Placeholders: placeholdersArr,
+            ExtUserPtr: {
+              __type: "Pointer",
+              className: "contracts_Users",
+              objectId: extUserId
+            },
+            CreatedBy: {
+              __type: "Pointer",
+              className: "_User",
+              objectId: creatorId
+            },
+            Signers: signers,
+            SendinOrder: Doc?.SendinOrder || false,
+            AutomaticReminders: Doc?.AutomaticReminders || false,
+            RemindOnceInEvery: Doc?.RemindOnceInEvery || 5,
+            IsEnableOTP: Doc?.IsEnableOTP || false,
+            TimeToCompleteDays: parseInt(Doc?.TimeToCompleteDays) || 15,
+            AllowModifications: Doc?.AllowModifications || false,
+            ...SignatureType,
+            ...NotifyOnSignatures,
+            ...Bcc,
+            ...RedirectUrl,
+            ...TemplateId
+          };
+          try {
+            const res = await axios.post(
+              `${localStorage.getItem("baseUrl")}classes/contracts_Document`,
+              data,
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+                  "X-Parse-Session-Token": localStorage.getItem("accesstoken")
+                }
+              }
+            );
+            if (res.data && res.data.objectId) {
+              setActLoader({});
+              navigate(`/${redirectUrl}/${res.data.objectId}`, {
+                state: { title: "Use Template" }
+              });
+            }
+          } catch (err) {
+            console.log("Err", err);
+            showAlert("danger", t("something-went-wrong-mssg"));
+            setActLoader({});
+          }
+        } else {
+          setActLoader({});
+        }
+      } else {
+        showAlert("danger", t("something-went-wrong-mssg"));
+        setActLoader({});
+      }
+    } catch (err) {
+      console.log("err", err);
+      showAlert("danger", t("something-went-wrong-mssg"));
+      setActLoader({});
+    }
+  };
   const handleActionBtn = async (act, item) => {
     if (act.action === "redirect") {
       handleURL(item, act);
@@ -415,6 +412,10 @@ const ReportTable = (props) => {
     } else if (act.action === "edit") {
       setContact(item);
       setIsModal({ [`edit_${item.objectId}`]: true });
+    } else if (act.action === "saveastemplate") {
+      setIsModal({ [`saveastemplate_${item.objectId}`]: true });
+    } else if (act.action === "recreatedocument") {
+      setIsModal({ [`recreatedocument_${item.objectId}`]: true });
     } else if (act.action) {
       setIsModal({ [`extendexpiry_${item.objectId}`]: true });
     }
@@ -470,12 +471,7 @@ const ReportTable = (props) => {
       });
       if (res.data && res.data.updatedAt) {
         setActLoader({});
-        setIsAlert(true);
-        setAlertMsg({
-          type: "success",
-          message: t("record-delete-alert")
-        });
-        setTimeout(() => setIsAlert(false), 1500);
+        showAlert("success", t("record-delete-alert"));
         const upldatedList = props.List.filter(
           (x) => x.objectId !== item.objectId
         );
@@ -483,12 +479,7 @@ const ReportTable = (props) => {
       }
     } catch (err) {
       console.log("err", err);
-      setIsAlert(true);
-      setAlertMsg({
-        type: "danger",
-        message: t("something-went-wrong-mssg")
-      });
-      setTimeout(() => setIsAlert(false), 1500);
+      showAlert("danger", t("something-went-wrong-mssg"));
       setActLoader({});
     }
   };
@@ -563,12 +554,7 @@ const ReportTable = (props) => {
         const res = result.data;
         if (res) {
           setActLoader({});
-          setIsAlert(true);
-          setAlertMsg({
-            type: "success",
-            message: t("record-revoke-alert")
-          });
-          setTimeout(() => setIsAlert(false), 1500);
+          showAlert("success", t("record-revoke-alert"));
           const upldatedList = props.List.filter(
             (x) => x.objectId !== item.objectId
           );
@@ -579,12 +565,7 @@ const ReportTable = (props) => {
       .catch((err) => {
         console.log("err", err);
         setReason("");
-        setIsAlert(true);
-        setAlertMsg({
-          type: "danger",
-          message: t("something-went-wrong-mssg")
-        });
-        setTimeout(() => setIsAlert(false), 1500);
+        showAlert("danger", t("something-went-wrong-mssg"));
         setActLoader({});
       });
   };
@@ -678,6 +659,7 @@ const ReportTable = (props) => {
     const signPdf = `${window.location.origin}/login/${encodeBase64}`;
     const variables = {
       document_title: doc.Name,
+      note: doc?.Note || "",
       sender_name: doc.ExtUserPtr.Name,
       sender_mail: doc.ExtUserPtr.Email,
       sender_phone: doc.ExtUserPtr?.Phone || "",
@@ -689,7 +671,6 @@ const ReportTable = (props) => {
       signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
     };
     const res = replaceMailVaribles(subject, "", variables);
-
     setMail((prev) => ({ ...prev, subject: res.subject }));
   };
   // `handlebodyChange` is used to add or change body of resend mail
@@ -707,6 +688,7 @@ const ReportTable = (props) => {
     const signPdf = `${window.location.origin}/login/${encodeBase64}`;
     const variables = {
       document_title: doc.Name,
+      note: doc?.Note || "",
       sender_name: doc.ExtUserPtr.Name,
       sender_mail: doc.ExtUserPtr.Email,
       sender_phone: doc.ExtUserPtr?.Phone || "",
@@ -748,6 +730,7 @@ const ReportTable = (props) => {
     const signPdf = `${window.location.origin}/login/${encodeBase64}`;
     const variables = {
       document_title: doc.Name,
+      note: doc?.Note || "",
       sender_name: doc.ExtUserPtr.Name,
       sender_mail: doc.ExtUserPtr.Email,
       sender_phone: doc.ExtUserPtr?.Phone || "",
@@ -758,12 +741,13 @@ const ReportTable = (props) => {
       company_name: doc?.ExtUserPtr?.Company || "",
       signing_url: `<a href=${signPdf} target=_blank>Sign here</a>`
     };
-
     const subject =
       doc?.RequestSubject ||
+      doc?.ExtUserPtr?.TenantId?.RequestSubject ||
       `{{sender_name}} has requested you to sign "{{document_title}}"`;
     const body =
       doc?.RequestBody ||
+      doc?.ExtUserPtr?.TenantId?.RequestBody ||
       `<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8' /></head><body><p>Hi {{receiver_name}},</p><br><p>We hope this email finds you well. {{sender_name}} has requested you to review and sign <b>"{{document_title}}"</b>.</p><p>Your signature is crucial to proceed with the next steps as it signifies your agreement and authorization.</p><br><p>{{signing_url}}</p><br><p>If you have any questions or need further clarification regarding the document or the signing process,  please contact the sender.</p><br><p>Thanks</p><p> Team ${appName}</p><br></body> </html>`;
     const res = replaceMailVaribles(subject, body, variables);
     setMail((prev) => ({ ...prev, subject: res.subject, body: res.body }));
@@ -789,25 +773,15 @@ const ReportTable = (props) => {
     try {
       const res = await axios.post(url, params, { headers: headers });
       if (res?.data?.result?.status === "success") {
-        setIsAlert(true);
-        setAlertMsg({ type: "success", message: t("mail-sent-alert") });
+        showAlert("success", t("mail-sent-alert"));
         setIsResendMail({});
       } else {
-        setIsAlert(true);
-        setAlertMsg({
-          type: "danger",
-          message: t("something-went-wrong-mssg")
-        });
+        showAlert("danger", t("something-went-wrong-mssg"));
       }
     } catch (err) {
       console.log("err in sendmail", err);
-      setIsAlert(true);
-      setAlertMsg({
-        type: "danger",
-        message: t("something-went-wrong-mssg")
-      });
+      showAlert("danger", t("something-went-wrong-mssg"));
     } finally {
-      setTimeout(() => setIsAlert(false), 1500);
       setIsNextStep({});
       setUserDetails({});
       setActLoader({});
@@ -840,27 +814,10 @@ const ReportTable = (props) => {
   // `handleQuickSendClose` is trigger when bulk send component trigger close event
   const handleQuickSendClose = (status, count) => {
     setIsBulkSend({});
-    setIsAlert(true);
     if (status === "success") {
-      if (count > 1) {
-        setAlertMsg({
-          type: "success",
-          message: count + " " + t("document-sent-alert")
-        });
-        setTimeout(() => setIsAlert(false), 1500);
-      } else {
-        setAlertMsg({
-          type: "success",
-          message: count + " " + t("document-sent-alert")
-        });
-        setTimeout(() => setIsAlert(false), 1500);
-      }
+      showAlert("success", count + " " + t("document-sent-alert"));
     } else {
-      setAlertMsg({
-        type: "danger",
-        message: t("something-went-wrong-mssg")
-      });
-      setTimeout(() => setIsAlert(false), 1500);
+      showAlert("danger", t("something-went-wrong-mssg"));
     }
   };
 
@@ -899,9 +856,7 @@ const ReportTable = (props) => {
     } catch (err) {
       console.log("err in fetch template in bulk modal", err);
       setIsBulkSend({});
-      setIsAlert(true);
-      setAlertMsg({ type: "danger", message: t("something-went-wrong-mssg") });
-      setTimeout(() => setIsAlert(false), 1500);
+      showAlert("danger", t("something-went-wrong-mssg"));
     }
   };
 
@@ -925,21 +880,12 @@ const ReportTable = (props) => {
       templateCls.set("SharedWith", teamArr);
       const res = await templateCls.save();
       if (res) {
-        setIsAlert(true);
-        setAlertMsg({
-          type: "success",
-          message: t("template-share-alert")
-        });
+        showAlert("success", t("template-share-alert"));
       }
     } catch (err) {
-      setIsAlert(true);
-      setAlertMsg({
-        type: "danger",
-        message: t("something-went-wrong-mssg")
-      });
+      showAlert("danger", t("something-went-wrong-mssg"));
     } finally {
       setActLoader({});
-      setTimeout(() => setIsAlert(false), 1500);
     }
   };
 
@@ -966,13 +912,13 @@ const ReportTable = (props) => {
             }
           });
           if (res.data && res.data.updatedAt) {
-            setIsAlert(true);
-            setAlertMsg({
-              type: "success",
-              message: t("expiry-date-updated", {
+            showAlert(
+              "success",
+              t("expiry-date-updated", {
                 newexpirydate: new Date(expiryDate)?.toLocaleDateString()
-              })
-            });
+              }),
+              2000
+            );
             if (props.ReportName === "Expired Documents") {
               const upldatedList = props.List.filter(
                 (x) => x.objectId !== item.objectId
@@ -982,70 +928,39 @@ const ReportTable = (props) => {
           }
         } catch (err) {
           console.log("err", err);
-          setIsAlert(true);
-          setAlertMsg({
-            type: "danger",
-            message: t("something-went-wrong-mssg")
-          });
+          showAlert("danger", t("something-went-wrong-mssg"), 2000);
         } finally {
           setActLoader({});
           setExpiryDate();
-          setTimeout(() => setIsAlert(false), 2000);
           setIsModal({});
         }
       } else {
-        setIsAlert(true);
-        setAlertMsg({ type: "danger", message: t("expiry-date-error") });
-        setTimeout(() => setIsAlert(false), 2000);
+        showAlert("danger", t("expiry-date-error"), 2000);
       }
     } else {
-      setIsAlert(true);
-      setAlertMsg({ type: "danger", message: t("expiry-date-error") });
-      setTimeout(() => setIsAlert(false), 2000);
+      showAlert("danger", t("expiry-date-error"), 2000);
     }
   };
   // `formatStatusRow` is used to format status row
   const formatStatusRow = (item) => {
+    const timezone = extClass?.[0]?.Timezone || "";
+    const DateFormat = extClass?.[0]?.DateFormat || "MM/DD/YYYY";
+    const Is12Hr = extClass?.[0]?.Is12HourTime || false;
     const signers = item?.Placeholders?.map((x, i) => {
-      const matchSigner = item?.AuditTrail?.find(
+      const audit = item?.AuditTrail?.find(
         (audit) => audit?.UserPtr?.objectId === x.signerObjId
       );
-      if (matchSigner) {
-        const timezone = extClass?.[0]?.Timezone || "";
-        const DateFormat = extClass?.[0]?.DateFormat || "MM/DD/YYYY";
-        const Is12Hr = extClass?.[0]?.Is12HourTime || false;
-        const signedon = matchSigner?.SignedOn
-          ? formatDateTime(
-              new Date(matchSigner?.SignedOn),
-              DateFormat,
-              timezone,
-              Is12Hr
-            )
+      const format = (date) =>
+        date
+          ? formatDateTime(new Date(date), DateFormat, timezone, Is12Hr)
           : "-";
-        const viewedon = matchSigner?.ViewedOn
-          ? formatDateTime(
-              new Date(matchSigner?.ViewedOn),
-              DateFormat,
-              timezone,
-              Is12Hr
-            )
-          : "-";
-        return {
-          id: i,
-          Email: matchSigner.UserPtr.Email,
-          Activity: matchSigner?.Activity?.toUpperCase() || "-",
-          SignedOn: signedon,
-          ViewedOn: viewedon
-        };
-      } else {
-        return {
-          id: i,
-          Email: x?.signerPtr?.Email || x?.email,
-          Activity: "SENT",
-          SignedOn: "-",
-          ViewedOn: "-"
-        };
-      }
+      return {
+        id: i,
+        Email: x?.signerPtr?.Email || x?.email,
+        Activity: audit?.Activity?.toUpperCase() || "SENT",
+        SignedOn: format(audit?.SignedOn),
+        ViewedOn: format(audit?.ViewedOn)
+      };
     });
     // Decide how many signers to display based on `showAllSignes` state
     const displaySigners = isShowAllSigners[item.objectId]
@@ -1075,7 +990,7 @@ const ReportTable = (props) => {
               <ModalUi
                 isOpen
                 title={t("document-logs")}
-                handleClose={() => setIsModal({})}
+                handleClose={handleCloseModal}
               >
                 <div className="pl-3 first:mt-2 border-t-[1px] border-gray-600 text-[12px] py-2">
                   <p className="font-bold"> {x?.Email}</p>
@@ -1289,28 +1204,25 @@ const ReportTable = (props) => {
       const contacts = JSON.stringify(filterdata);
       const res = await Parse.Cloud.run("createbatchcontact", { contacts });
       if (res) {
-        setIsAlert(true);
-        setAlertMsg({
-          type: "info",
-          message: t("contact-imported", {
+        showAlert(
+          "info",
+          t("contact-imported", {
             imported: res?.success || 0,
             failed: res?.failed || 0
           })
-        });
+        );
         if (res?.success > 0) {
-          setTimeout(() => window.location.reload(), 2000);
+          setTimeout(() => window.location.reload(), 1500);
         }
       }
     } catch (err) {
       console.log("err while creating batch contact", err);
-      setIsAlert(true);
-      setAlertMsg({ type: "danger", message: t("something-went-wrong-mssg") });
+      showAlert("danger", t("something-went-wrong-mssg"));
     } finally {
       setActLoader({});
       setIsModal({});
       setImportedData([]);
       setInvalidRecords(0);
-      setTimeout(() => setIsAlert(false), 2000);
     }
   };
 
@@ -1325,32 +1237,22 @@ const ReportTable = (props) => {
       if (duplicateRes) {
         const newTemplate = JSON.parse(JSON.stringify(duplicateRes));
         props.setList((prevData) => [newTemplate, ...prevData]);
-        setIsAlert(true);
-        setAlertMsg({
-          type: "success",
-          message: t("duplicate-template-created")
-        });
+        showAlert("success", t("duplicate-template-created"));
       }
     } catch (err) {
-      setIsAlert(true);
-      setAlertMsg({
-        type: "danger",
-        message: t("something-went-wrong-mssg")
-      });
+      showAlert("danger", t("something-went-wrong-mssg"));
       console.log("Err while create duplicate template", err);
     } finally {
       setActLoader({});
-      setTimeout(() => setIsAlert(false), 2000);
     }
   };
   // `handleRenameDoc` is used to update document name
   const handleRenameDoc = async (item) => {
     setActLoader({ [item.objectId]: true });
     setIsModal({});
-    const className =
-      props.ReportName === "Templates"
-        ? "contracts_Template"
-        : "contracts_Document";
+    const className = isTemplateReport
+      ? "contracts_Template"
+      : "contracts_Document";
     try {
       const query = new Parse.Query(className);
       const docObj = await query.get(item.objectId);
@@ -1361,21 +1263,11 @@ const ReportTable = (props) => {
         x.objectId === item.objectId ? { ...x, Name: renameDoc } : x
       );
       props.setList(updateList);
-      setIsAlert(true);
-      setAlertMsg({
-        type: "success",
-        message: "Document updated"
-      });
       setActLoader({});
-      setTimeout(() => setIsAlert(false), 2000);
+      showAlert("success", "Document updated", 2000);
     } catch (err) {
-      setIsAlert(true);
-      setAlertMsg({
-        type: "danger",
-        message: t("something-went-wrong-mssg")
-      });
+      showAlert("danger", t("something-went-wrong-mssg"), 2000);
       setActLoader({});
-      setTimeout(() => setIsAlert(false), 2000);
     }
   };
   const handleBtnVisibility = (act, item) => {
@@ -1399,6 +1291,90 @@ const ReportTable = (props) => {
   const handleCloseModal = () => {
     setIsModal({});
   };
+  const handleSaveAsTemplate = async (doc) => {
+    try {
+      const params = { docId: doc?.objectId };
+      const templateRes = await Parse.Cloud.run("saveastemplate", params);
+      // console.log("templateRes ", templateRes);
+      setTemplateId(templateRes?.id);
+      setIsSuccess({ [doc.objectId]: true });
+    } catch (err) {
+      console.log("Err in saveastemplate", err);
+    } finally {
+      setActLoader({});
+    }
+  };
+  const handleCloseTemplate = () => {
+    setTemplateId("");
+    setIsSuccess({});
+    handleCloseModal();
+    setActLoader({});
+    handleClose();
+  };
+
+  // `handleBulkSend` is used to open modal as well as fetch template
+  // and show Ui on the basis template response
+  const handleBulkSendTemplate = async (templateId, docId) => {
+    setIsBulkSend({ [docId]: true });
+    setIsLoader({ [docId]: true });
+    try {
+      const params = {
+        templateId: templateId,
+        include: ["Placeholders.signerPtr"]
+      };
+      const axiosRes = await axios.post(
+        `${localStorage.getItem("baseUrl")}functions/getTemplate`,
+        params,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+            sessionToken: localStorage.getItem("accesstoken")
+          }
+        }
+      );
+      const templateRes = axiosRes.data && axiosRes.data.result;
+      const tenantSignTypes = await fetchTenantDetails();
+      const docSignTypes = templateRes?.SignatureType || signatureTypes;
+      const updatedSignatureType = await handleSignatureType(
+        tenantSignTypes,
+        docSignTypes
+      );
+      setSignatureType(updatedSignatureType);
+      setPlaceholders(templateRes?.Placeholders);
+      setTemplateDetails(templateRes);
+      setIsLoader({});
+    } catch (err) {
+      console.log("err in fetch template in bulk modal", err);
+      setIsBulkSend({});
+      showAlert("danger", t("something-went-wrong-mssg"));
+    }
+  };
+
+  const handleResendClose = () => {
+    setIsResendMail({});
+    setIsNextStep({});
+    setUserDetails({});
+  };
+
+  const handleRecreateDoc = async (item) => {
+    setActLoader({ [item.objectId]: true });
+    try {
+      const res = await Parse.Cloud.run("recreatedoc", {
+        docId: item.objectId
+      });
+      if (res) {
+        openInNewTab(`/placeHolderSign/${res.objectId}`, "_self");
+      }
+    } catch (err) {
+      handleCloseModal();
+      showAlert("danger", err.message);
+      // showAlert("danger", t("something-went-wrong-mssg"));
+      console.log("Err while create duplicate template", err);
+    } finally {
+      setActLoader({});
+    }
+  };
   return (
     <div className="relative">
       {Object.keys(actLoader)?.length > 0 && (
@@ -1407,8 +1383,10 @@ const ReportTable = (props) => {
         </div>
       )}
       <div className="p-2 w-full bg-base-100 text-base-content op-card shadow-lg">
-        {isAlert && <Alert type={alertMsg.type}>{alertMsg.message}</Alert>}
-        {props.tourData && props.ReportName === "Templates" && (
+        {alertMsg.message && (
+          <Alert type={alertMsg.type}>{alertMsg.message}</Alert>
+        )}
+        {props.tourData && isTemplateReport && (
           <>
             <Tour
               onRequestClose={closeTour}
@@ -1445,7 +1423,7 @@ const ReportTable = (props) => {
                 <i className="fa-light fa-square-plus text-accent text-[30px] md:text-[35px]"></i>
               </div>
             )}
-            {props.ReportName === "Templates" && (
+            {isTemplateReport && (
               <i
                 data-tut="reactourFirst"
                 onClick={() => navigate("/form/template")}
@@ -1644,7 +1622,9 @@ const ReportTable = (props) => {
                           </th>
                         )}
                         <td className="p-2 min-w-56 max-w-56">
-                          <div className="font-semibold">{item?.Name}</div>
+                          <div className="font-semibold break-words">
+                            {item?.Name}
+                          </div>
                           {item?.ExpiryDate?.iso && (
                             <div className="text-gray-500">
                               Expires {formatDate(item?.ExpiryDate?.iso)}
@@ -1714,7 +1694,7 @@ const ReportTable = (props) => {
                           <div className="text-base-content min-w-max flex flex-row gap-x-2 gap-y-1 justify-start items-center">
                             {props.actions?.length > 0 &&
                               props.actions.map((act, index) =>
-                                props.ReportName === "Templates" ? (
+                                isTemplateReport ? (
                                   <React.Fragment key={index}>
                                     {(item.ExtUserPtr?.objectId ===
                                       extClass?.[0]?.objectId ||
@@ -1781,7 +1761,7 @@ const ReportTable = (props) => {
                                       isOpen={
                                         isModal["duplicate_" + item.objectId]
                                       }
-                                      handleClose={() => setIsModal({})}
+                                      handleClose={handleCloseModal}
                                     >
                                       <div className=" flex flex-col px-4 pb-3 pt-2 ">
                                         <p className="text-base">
@@ -1798,7 +1778,7 @@ const ReportTable = (props) => {
                                           </button>
                                           <button
                                             className="w-[100px] op-btn op-btn-secondary op-btn-md"
-                                            onClick={() => setIsModal({})}
+                                            onClick={handleCloseModal}
                                           >
                                             {t("no")}
                                           </button>
@@ -1869,12 +1849,132 @@ const ReportTable = (props) => {
                                 )
                               )}
                           </div>
+                          {isModal["recreatedocument_" + item.objectId] && (
+                            <ModalUi isOpen handleClose={handleCloseModal}>
+                              {actLoader[item.objectId] && (
+                                <div className="absolute h-full w-full flex justify-center items-center rounded-box bg-black/30">
+                                  <Loader />
+                                </div>
+                              )}
+                              <h3 className="text-base-content font-bold text-lg pt-[15px] px-[20px]">
+                                {t("fix-&-resend-document")}
+                              </h3>
+                              <div className="p-[15px] md:p-[20px]">
+                                <div className="text-lg font-normal text-center">
+                                  <img
+                                    src={recreatedoc}
+                                    alt="recreate-doc"
+                                    className="mx-auto w-[200px] h-auto"
+                                  />
+                                  <p className="text-sm md:text-base md:px-2 mt-2">
+                                    {t("do-you-want-recreate-document?")}
+                                  </p>
+                                </div>
+                                <hr className="bg-[#ccc] mt-2.5" />
+                                <div className="flex items-center justify-center mt-[14px] md:mt-[16px] gap-2 text-white">
+                                  <button
+                                    onClick={() => handleRecreateDoc(item)}
+                                    className="op-btn op-btn-primary focus:outline-none text-sm relative px-4"
+                                  >
+                                    {t("start-editing")}
+                                  </button>
+                                  <button
+                                    onClick={handleCloseModal}
+                                    className="op-btn op-btn-secondary focus:outline-none text-sm relative px-8"
+                                  >
+                                    {t("cancel")}
+                                  </button>
+                                </div>
+                              </div>
+                            </ModalUi>
+                          )}
+                          {isModal["saveastemplate_" + item.objectId] && (
+                            <ModalUi
+                              isOpen
+                              title={
+                                isSuccess[item.objectId]
+                                  ? t("template-created")
+                                  : t("btnLabel.Save as template")
+                              }
+                              handleClose={handleCloseTemplate}
+                            >
+                              {isSuccess[item.objectId] ? (
+                                <div className="mx-[10px] my-[15px]">
+                                  <p className="text-base text-center">
+                                    {t("how-would-you-like-to-proceed?")}
+                                  </p>
+                                  <div className="flex flex-wrap gap-1 items-center justify-center mt-2">
+                                    <button
+                                      className="op-btn-primary op-btn op-btn-sm focus:outline-none text-sm relative"
+                                      onClick={() =>
+                                        handleUseTemplate(
+                                          templateId,
+                                          "placeHolderSign"
+                                        )
+                                      }
+                                    >
+                                      <i className="fa-light fa-plus"></i>{" "}
+                                      {t("btnLabel.Use")}
+                                    </button>
+                                    <button
+                                      className="op-btn-secondary op-btn op-btn-sm focus:outline-none text-sm relative"
+                                      onClick={() =>
+                                        handleBulkSendTemplate(
+                                          templateId,
+                                          item.objectId
+                                        )
+                                      }
+                                    >
+                                      <i className="fa-light fa-plus"></i>{" "}
+                                      {`${t(`btnLabel.Quick send`)}`}
+                                    </button>
+                                    <button
+                                      className="op-btn-secondary op-btn op-btn-sm focus:outline-none text-sm relative"
+                                      onClick={() =>
+                                        navigate(`/template/${templateId}`)
+                                      }
+                                    >
+                                      <i className="fa-light fa-pen"></i>{" "}
+                                      {t(`btnLabel.Edit`)}
+                                    </button>
+                                  </div>
+                                  <Link
+                                    to="/report/6TeaPr321t"
+                                    className="cursor-pointer underline text-sm w-full flex justify-center mt-2"
+                                  >
+                                    {t("go-to-manage-templates")}
+                                  </Link>
+                                </div>
+                              ) : (
+                                <div className="m-[20px]">
+                                  <div className="text-lg font-normal text-black">
+                                    {t("save-as-template-?")}
+                                  </div>
+                                  <hr className="bg-[#ccc] mt-3" />
+                                  <div className="flex items-center mt-3 gap-2 text-white">
+                                    <button
+                                      onClick={() => handleSaveAsTemplate(item)}
+                                      className="op-btn op-btn-primary w-[100px]"
+                                    >
+                                      {t("yes")}
+                                    </button>
+                                    <button
+                                      onClick={handleCloseTemplate}
+                                      className="op-btn op-btn-secondary w-[100px]"
+                                    >
+                                      {t("no")}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </ModalUi>
+                          )}
                           {isModal["extendexpiry_" + item.objectId] && (
                             <ModalUi
                               isOpen
                               title={t("btnLabel.extend-expiry-date")}
                               reduceWidth={"md:max-w-[450px]"}
-                              handleClose={() => setIsModal({})}
+                              handleClose={handleCloseModal}
                             >
                               <form
                                 className="px-4 py-2 flex flex-col"
@@ -1933,14 +2033,12 @@ const ReportTable = (props) => {
                           {isViewShare[item.objectId] && (
                             <ModalUi
                               isOpen
-                              showHeader={
-                                props.ReportName === "Templates" && true
-                              }
+                              showHeader={isTemplateReport}
                               title={t("signers")}
                               reduceWidth={"md:max-w-[450px]"}
                               handleClose={() => setIsViewShare({})}
                             >
-                              {props.ReportName !== "Templates" && (
+                              {!isTemplateReport && (
                                 <div
                                   className="op-btn op-btn-sm op-btn-circle op-btn-ghost text-base-content absolute right-2 top-1 z-40"
                                   onClick={() => setIsViewShare({})}
@@ -1951,13 +2049,13 @@ const ReportTable = (props) => {
                               <table className="op-table w-full overflow-auto">
                                 <thead className="h-[38px] sticky top-0 text-base-content text-sm pt-[15px] px-[20px]">
                                   <tr>
-                                    {props.ReportName === "Templates" && (
+                                    {isTemplateReport && (
                                       <th className="p-2 pl-3 w-[30%]">
                                         {t("roles")}
                                       </th>
                                     )}
                                     <th className="pl-3 py-2">
-                                      {props.ReportName === "Templates"
+                                      {isTemplateReport
                                         ? t("email")
                                         : t("signers")}
                                     </th>
@@ -1971,7 +2069,7 @@ const ReportTable = (props) => {
                                           key={i}
                                           className="text-sm font-medium"
                                         >
-                                          {props.ReportName === "Templates" && (
+                                          {isTemplateReport && (
                                             <td className="text-[12px] p-2 pl-3 w-[30%]">
                                               {x.Role && x.Role}
                                             </td>
@@ -2127,13 +2225,9 @@ const ReportTable = (props) => {
                             <ModalUi
                               isOpen
                               title={t("resend-mail")}
-                              handleClose={() => {
-                                setIsResendMail({});
-                                setIsNextStep({});
-                                setUserDetails({});
-                              }}
+                              handleClose={handleResendClose}
                             >
-                              <div className=" overflow-y-auto max-h-[340px] md:max-h-[400px]">
+                              <div className="overflow-y-auto max-h-[340px] md:max-h-[400px]">
                                 {item?.Placeholders?.map((user) => (
                                   <React.Fragment key={user.Id}>
                                     {isNextStep[user.Id] && (
@@ -2233,9 +2327,9 @@ const ReportTable = (props) => {
                           <ModalUi
                             title={t("btnLabel.Rename")}
                             isOpen={isModal["rename_" + item.objectId]}
-                            handleClose={() => setIsModal({})}
+                            handleClose={handleCloseModal}
                           >
-                            <div className=" flex flex-col px-4 pb-3 pt-2 ">
+                            <div className="flex flex-col px-4 pb-3 pt-2">
                               <div className="flex flex-col gap-2">
                                 <input
                                   maxLength={200}
@@ -2255,7 +2349,7 @@ const ReportTable = (props) => {
                                 </button>
                                 <button
                                   className="w-[100px] op-btn op-btn-secondary op-btn-md"
-                                  onClick={() => setIsModal({})}
+                                  onClick={handleCloseModal}
                                 >
                                   {t("cancel")}
                                 </button>

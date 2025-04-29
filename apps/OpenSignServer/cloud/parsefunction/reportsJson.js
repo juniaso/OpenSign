@@ -25,9 +25,9 @@ export default function reportJson(id, userId) {
           'Signers.Phone',
           'Placeholders',
           'IsSignyourself',
+          'TemplateId',
         ],
       };
-
     // Need your sign report
     case '4Hhwbp482K':
       return {
@@ -61,6 +61,7 @@ export default function reportJson(id, userId) {
           'AuditTrail',
           'Placeholders',
           'SignedUrl',
+          'TemplateId',
           'ExpiryDate',
         ],
       };
@@ -94,6 +95,11 @@ export default function reportJson(id, userId) {
           'SendMail',
           'Placeholders',
           'SignedUrl',
+          'TemplateId',
+          'RequestBody',
+          'RequestSubject',
+          'ExtUserPtr.TenantId.RequestBody',
+          'ExtUserPtr.TenantId.RequestSubject',
         ],
       };
     // completed documents report
@@ -140,6 +146,7 @@ export default function reportJson(id, userId) {
           'Placeholders',
           'IsSignyourself',
           'IsCompleted',
+          'TemplateId',
         ],
       };
     //  declined documents report
@@ -164,6 +171,7 @@ export default function reportJson(id, userId) {
           'Placeholders',
           'DeclineReason',
           'SignedUrl',
+          'TemplateId',
         ],
       };
     //  Expired Documents report
@@ -190,6 +198,7 @@ export default function reportJson(id, userId) {
           'Signers.Phone',
           'Placeholders',
           'SignedUrl',
+          'TemplateId',
           'ExpiryDate',
         ],
       };
@@ -221,6 +230,11 @@ export default function reportJson(id, userId) {
           'ExpiryDate',
           'Placeholders',
           'SignedUrl',
+          'TemplateId',
+          'RequestBody',
+          'RequestSubject',
+          'ExtUserPtr.TenantId.RequestBody',
+          'ExtUserPtr.TenantId.RequestSubject',
         ],
       };
     //  Recent signature requests report show on dashboard
@@ -254,6 +268,7 @@ export default function reportJson(id, userId) {
           'Signers.Phone',
           'Placeholders',
           'SignedUrl',
+          'TemplateId',
           'ExpiryDate',
         ],
       };
@@ -279,6 +294,7 @@ export default function reportJson(id, userId) {
           'Signers.Email',
           'Signers.Phone',
           'Placeholders',
+          'TemplateId',
         ],
       };
     // contact book report
