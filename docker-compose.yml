@@ -25,10 +25,7 @@ services:
     networks:
       - app-network
   client:
-    image: opensign/opensign:main
-    #build:
-      #context: https://github.com/juniaso/OpenSign.git#staging:apps/OpenSign
-      #dockerfile: Dockerfile
+    image: juniaso/opensign:main
     container_name: OpenSign-container
     depends_on:
       - server
