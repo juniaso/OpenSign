@@ -1,0 +1,35 @@
+{
+  "files": {
+    "main.css": "https://localhost:3001/static/css/main.d11c78cd.css",
+    "main.js": "https://localhost:3001/static/js/main.0e5022f8.js",
+    "static/js/298.7a32d527.chunk.js": "https://localhost:3001/static/js/298.7a32d527.chunk.js",
+    "static/js/532.922dcd70.chunk.js": "https://localhost:3001/static/js/532.922dcd70.chunk.js",
+    "static/js/773.497b9683.chunk.js": "https://localhost:3001/static/js/773.497b9683.chunk.js",
+    "static/js/225.647bf6df.chunk.js": "https://localhost:3001/static/js/225.647bf6df.chunk.js",
+    "static/js/566.77f95cea.chunk.js": "https://localhost:3001/static/js/566.77f95cea.chunk.js",
+    "static/js/209.117f42f2.chunk.js": "https://localhost:3001/static/js/209.117f42f2.chunk.js",
+    "static/css/802.3b329ecf.chunk.css": "https://localhost:3001/static/css/802.3b329ecf.chunk.css",
+    "static/js/802.ed58f595.chunk.js": "https://localhost:3001/static/js/802.ed58f595.chunk.js",
+    "static/js/454.ff7cc72c.chunk.js": "https://localhost:3001/static/js/454.ff7cc72c.chunk.js",
+    "static/js/498.a5ac0984.chunk.js": "https://localhost:3001/static/js/498.a5ac0984.chunk.js",
+    "static/js/844.32b70fd1.chunk.js": "https://localhost:3001/static/js/844.32b70fd1.chunk.js",
+    "static/js/945.ee4781e4.chunk.js": "https://localhost:3001/static/js/945.ee4781e4.chunk.js",
+    "static/js/144.ccf6d231.chunk.js": "https://localhost:3001/static/js/144.ccf6d231.chunk.js",
+    "static/js/187.181ba3be.chunk.js": "https://localhost:3001/static/js/187.181ba3be.chunk.js",
+    "static/js/842.b67d0a7b.chunk.js": "https://localhost:3001/static/js/842.b67d0a7b.chunk.js",
+    "static/js/17.6a490cb0.chunk.js": "https://localhost:3001/static/js/17.6a490cb0.chunk.js",
+    "static/js/621.352b0ee4.chunk.js": "https://localhost:3001/static/js/621.352b0ee4.chunk.js",
+    "static/js/338.14fea613.chunk.js": "https://localhost:3001/static/js/338.14fea613.chunk.js",
+    "static/js/154.56c5525e.chunk.js": "https://localhost:3001/static/js/154.56c5525e.chunk.js",
+    "static/media/logo.png": "https://localhost:3001/static/media/logo.2a7bff0c1189183fafe7.png",
+    "static/media/login_img.svg": "https://localhost:3001/static/media/login_img.43fa8d7f2fb0cfa6803363b3c1339e1a.svg",
+    "static/media/recreatedoc.png": "https://localhost:3001/static/media/recreatedoc.c5b342debc8446d9a4fc.png",
+    "static/media/dp.png": "https://localhost:3001/static/media/dp.30e53f135742466a2060.png",
+    "static/media/pad.svg": "https://localhost:3001/static/media/pad.6b6eb9132b3b4f92324f1bc083b8e500.svg",
+    "index.html": "https://localhost:3001/index.html"
+  },
+  "entrypoints": [
+    "static/css/main.d11c78cd.css",
+    "static/js/main.0e5022f8.js"
+  ]
+}

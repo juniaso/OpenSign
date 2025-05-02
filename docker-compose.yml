@@ -1,18 +1,21 @@
 services:
   server:
-    image: opensign/opensignserver:main
+    build:
+      context: ./apps/OpenSignServer
+      dockerfile: Dockerfile
     container_name: OpenSignServer-container
+    command: /usr/src/app/node_modules/.bin/nodemon server.js
     volumes:
-      - opensign-files:/usr/src/app/files
+      - ./apps/OpenSignServer/:/usr/src/app
+      - /usr/src/app/node_modules
     ports:
       - "8080:8080"
     depends_on:
       - mongo
-    env_file: .env.prod
+    env_file: .env.local_dev
     environment:
-      - NODE_ENV=production
-      - SERVER_URL=${HOST_URL:-https://localhost:3001}/api/app
-      - PUBLIC_URL=${HOST_URL:-https://localhost:3001}
+      - NODE_ENV=development
+      - SERVER_URL=${HOST_URL:-https://localhost:3001}/app
     networks:
       - app-network
   mongo:
@@ -29,7 +32,7 @@ services:
     container_name: OpenSign-container
     depends_on:
       - server
-    env_file: .env.prod  
+    env_file: .env.local_dev
     ports:
       - "3000:3000"
     networks:
