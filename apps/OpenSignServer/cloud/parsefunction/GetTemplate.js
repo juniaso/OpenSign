@@ -20,6 +20,7 @@ export default async function GetTemplate(request) {
       try {
         let template = new Parse.Query('contracts_Template');
         template.equalTo('objectId', templateId);
+        template.notEqualTo('IsArchive', true);
         template.include('ExtUserPtr');
         template.include('Signers');
         template.include('CreatedBy');
@@ -35,18 +36,26 @@ export default async function GetTemplate(request) {
             let teamsArr = [];
             _extUser?.TeamIds?.forEach(x => (teamsArr = [...teamsArr, ...x.Ancestors]));
             // Create the first query
-            const sharedWithQuery = new Parse.Query('contracts_Template');
-            sharedWithQuery.containedIn('SharedWith', teamsArr);
+            const sharedWithTeamQuery = new Parse.Query('contracts_Template');
+            sharedWithTeamQuery.containedIn('SharedWith', teamsArr);
 
             // Create the second query
+            const sharedWithJsersQuery = new Parse.Query('contracts_Template');
+            sharedWithJsersQuery.equalTo('SharedWithUsers', {
+              __type: 'Pointer',
+              className: 'contracts_Users',
+              objectId: extUser.id,
+            });
+            // Create the third query
             const createdByQuery = new Parse.Query('contracts_Template');
             createdByQuery.equalTo('ExtUserPtr', {
               __type: 'Pointer',
               className: 'contracts_Users',
               objectId: extUser.id,
             });
-            template = Parse.Query.or(sharedWithQuery, createdByQuery);
+            template = Parse.Query.or(sharedWithTeamQuery, sharedWithJsersQuery, createdByQuery);
             template.equalTo('objectId', templateId);
+            template.notEqualTo('IsArchive', true);
             template.include('ExtUserPtr');
             template.include('Signers');
             template.include('CreatedBy');
@@ -62,21 +71,21 @@ export default async function GetTemplate(request) {
           delete templateRes?.ExtUserPtr?.TenantId?.PfxFile;
           return templateRes;
         } else {
-          return { error: "You don't have access of this template!" };
+          return { error: "template deleted or you don't have access." };
         }
       } catch (err) {
         console.log('err', err);
         return err;
       }
     } else {
-      return { error: "You don't have access of this template!" };
+      return { error: "template deleted or you don't have access." };
     }
   } catch (err) {
     console.log('err', err);
     if (err?.response?.data?.code === 209 || err.code == 209) {
       return { error: 'Invalid session token' };
     } else {
-      return { error: "You don't have access of this template!" };
+      return { error: "template deleted or you don't have access." };
     }
   }
 }
